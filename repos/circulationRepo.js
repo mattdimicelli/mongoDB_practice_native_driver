@@ -1,4 +1,4 @@
-const { MongoClient } = require('mongodb');
+const { MongoClient, ObjectID } = require('mongodb');
 
 function circulationRepo() {
     // will build an object via the revealing-object-pattern
@@ -51,6 +51,9 @@ function circulationRepo() {
             try {
                 await client.connect();
                 const db = client.db(DB_NAME);
+                id = ObjectID(id);
+                const item = await db.collection('newspapers').findOne({_id: id});
+                // unlike .find(), findOne() executes immediately and does not return a cursor
                 resolve(item);
                 client.close();
             }
@@ -60,7 +63,57 @@ function circulationRepo() {
         });
     }
 
-    return { loadData, getData, getById }
+    function add(item) {
+        return new Promise(async (resolve, reject) => {
+            const client = new MongoClient(URL);
+            try {
+                await client.connect();
+                const db = client.db(DB_NAME);
+                const addedItem = await db.collection('newspapers').insertOne(item);
+                resolve(addedItem.ops[0]);
+                client.close();
+            }
+            catch(err) {
+                reject(err);
+            }
+        });
+    }
+
+    function update(id, update) {
+        return new Promise(async (resolve, reject) => {
+            const client = new MongoClient(URL);
+            try {
+                await client.connect();
+                const db = client.db(DB_NAME);
+                const updatedItem = await db.collection('newspapers')
+                    .findOneAndReplace({ _id: ObjectID(id) }, update, { returnOriginal: false });
+                resolve(updatedItem.value);
+                client.close();
+            }
+            catch(err) {
+                reject(err);
+            }
+        });
+    }
+
+    function remove(id) {
+        return new Promise(async (resolve, reject) => {
+            const client = new MongoClient(URL);
+            try {
+                await client.connect();
+                const db = client.db(DB_NAME);
+                const removedItem = await db.collection('newspapers')
+                    .deleteOne({ _id: ObjectID(id) });
+                resolve(removedItem.deletedCount === 1);
+                client.close();
+            }
+            catch(err) {
+                reject(err);
+            }
+        });
+    }
+
+    return { loadData, getData, getById, add, update, remove }
 }
 
 module.exports = circulationRepo();

@@ -1,6 +1,6 @@
 const { MongoClient } = require('mongodb');
 const assert = require('assert');
-const { loadData, getData, getById } = require('./repos/circulationRepo');
+const { loadData, getData, getById, add, update, remove } = require('./repos/circulationRepo');
 const DATA = require('./circulation.json');
 
 const URL = 'mongodb://localhost:27017';
@@ -28,9 +28,43 @@ const DB_NAME = 'circulation';
         const limitedData = await getData({}, 3);
         assert.equal(limitedData.length, 3);
 
-        const byId = await getById(items[4]._id);  // this will return the item itself (not an arr)
+        const id = items[4]._id.toString();
+        const byId = await getById(id);  // this will return the item itself (not an arr)
         assert.deepEqual(byId, items[4]);
+
+        const newItem = {
+            "Newspaper": "El Nuevo Dia",
+            "Daily Circulation, 2004": 13727,
+            "Daily Circulation, 2013": 113868,
+            "Change in Daily Circulation, 2004-2013": -92,
+            "Pulitzer Prize Winners and Finalists, 1990-2003": 0,
+            "Pulitzer Prize Winners and Finalists, 2004-2014": 0,
+            "Pulitzer Prize Winners and Finalists, 1990-2014": 0
+        };
+
+        const addedItem = await add(newItem);
+        assert(addedItem._id);
+        const addedItemPulledById = await getById(addedItem._id);
+        assert.deepEqual(addedItemPulledById, newItem);
+
+        const updatedItem = await update(addedItem._id, {
+            "Newspaper": "El Imparcial",
+            "Daily Circulation, 2004": 50727,
+            "Daily Circulation, 2013": 43868,
+            "Change in Daily Circulation, 2004-2013": -55,
+            "Pulitzer Prize Winners and Finalists, 1990-2003": 0,
+            "Pulitzer Prize Winners and Finalists, 2004-2014": 0,
+            "Pulitzer Prize Winners and Finalists, 1990-2014": 0
+        });
+        const updatedAddedItem = await getById(addedItem._id);
+        assert.equal(updatedAddedItem.Newspaper, 'El Imparcial');
+
+        const removedItem = remove(addedItem._id);
+        assert(removedItem);
+        const deletedItem = await getById(addedItem._id);
+        assert.equal(deletedItem, null);
     }
+
     catch(err) {
         console.error(err);
     }
